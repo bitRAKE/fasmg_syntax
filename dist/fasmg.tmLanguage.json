@@ -1,0 +1,421 @@
+{
+  "$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
+  "name": "flat assembler g",
+  "scopeName": "source.fasmg",
+  "fileTypes": [
+    "asm",
+    "inc",
+    "fasmg",
+    "g"
+  ],
+  "patterns": [
+    {
+      "include": "#line"
+    }
+  ],
+  "repository": {
+    "line": {
+      "patterns": [
+        {
+          "include": "#comment"
+        },
+        {
+          "include": "#line-continuation"
+        },
+        {
+          "include": "#calminstruction-block"
+        },
+        {
+          "include": "#strings"
+        },
+        {
+          "include": "#label-definition"
+        },
+        {
+          "include": "#preprocessor"
+        },
+        {
+          "include": "#macro-definition-head"
+        },
+        {
+          "include": "#control-directives"
+        },
+        {
+          "include": "#data-directives"
+        },
+        {
+          "include": "#storage-directives"
+        },
+        {
+          "include": "#directives"
+        },
+        {
+          "include": "#operators-word"
+        },
+        {
+          "include": "#size-constants"
+        },
+        {
+          "include": "#special-symbols"
+        },
+        {
+          "include": "#numbers"
+        },
+        {
+          "include": "#operators-punct"
+        },
+        {
+          "include": "#identifiers"
+        }
+      ]
+    },
+    "comment": {
+      "name": "comment.line.semicolon.fasmg",
+      "begin": ";",
+      "end": "$",
+      "beginCaptures": {
+        "0": {
+          "name": "punctuation.definition.comment.fasmg"
+        }
+      }
+    },
+    "line-continuation": {
+      "name": "constant.character.escape.continuation.fasmg",
+      "match": "\\\\\\s*$"
+    },
+    "strings": {
+      "patterns": [
+        {
+          "comment": "Line-based; doubled '' is the only escape; unclosed at EOL is an error.",
+          "name": "string.quoted.single.fasmg",
+          "begin": "'",
+          "end": "(?:('(?!')))|(\\n|$)",
+          "beginCaptures": {
+            "0": {
+              "name": "punctuation.definition.string.begin.fasmg"
+            }
+          },
+          "endCaptures": {
+            "1": {
+              "name": "punctuation.definition.string.end.fasmg"
+            },
+            "2": {
+              "name": "invalid.illegal.unclosed-string.fasmg"
+            }
+          },
+          "patterns": [
+            {
+              "name": "constant.character.escape.fasmg",
+              "match": "''"
+            }
+          ]
+        },
+        {
+          "comment": "Line-based; doubled \"\" is the only escape; unclosed at EOL is an error.",
+          "name": "string.quoted.double.fasmg",
+          "begin": "\"",
+          "end": "(?:(\"(?!\")))|(\\n|$)",
+          "beginCaptures": {
+            "0": {
+              "name": "punctuation.definition.string.begin.fasmg"
+            }
+          },
+          "endCaptures": {
+            "1": {
+              "name": "punctuation.definition.string.end.fasmg"
+            },
+            "2": {
+              "name": "invalid.illegal.unclosed-string.fasmg"
+            }
+          },
+          "patterns": [
+            {
+              "name": "constant.character.escape.fasmg",
+              "match": "\"\""
+            }
+          ]
+        }
+      ]
+    },
+    "numbers": {
+      "comment": "See fasmg.syntax_notes.md for the verified rules.",
+      "patterns": [
+        {
+          "comment": "Hex 0x... \u2014 lowercase x ONLY. Separators allowed anywhere after 0x.",
+          "name": "constant.numeric.hex.fasmg",
+          "match": "(?<![\\w.#])0x[0-9A-Fa-f_']+"
+        },
+        {
+          "comment": "Hex $... \u2014 first char after $ MUST be a hex digit.",
+          "name": "constant.numeric.hex.fasmg",
+          "match": "(?<![\\w.#])\\$[0-9A-Fa-f][0-9A-Fa-f_']*"
+        },
+        {
+          "comment": "Hex with h/H suffix. Must start with 0-9.",
+          "name": "constant.numeric.hex.fasmg",
+          "match": "(?<![\\w.#])[0-9][0-9A-Fa-f_']*[hH]\\b"
+        },
+        {
+          "comment": "Binary with b/B suffix.",
+          "name": "constant.numeric.binary.fasmg",
+          "match": "(?<![\\w.#])[01][01_']*[bB]\\b"
+        },
+        {
+          "comment": "Octal with o/O/q/Q suffix.",
+          "name": "constant.numeric.octal.fasmg",
+          "match": "(?<![\\w.#])[0-7][0-7_']*[oOqQ]\\b"
+        },
+        {
+          "comment": "Float with dot. Exponent and f suffix are mutually exclusive.",
+          "name": "constant.numeric.float.fasmg",
+          "match": "(?<![\\w.#])[0-9][0-9_']*\\.[0-9][0-9_']*(?:(?:[eE][+-]?[0-9_']*[0-9][0-9_']*)|[fF])?\\b"
+        },
+        {
+          "comment": "Float without dot, with exponent (no f suffix allowed).",
+          "name": "constant.numeric.float.fasmg",
+          "match": "(?<![\\w.#])[0-9][0-9_']*[eE][+-]?[0-9_']*[0-9][0-9_']*\\b"
+        },
+        {
+          "comment": "Float without dot or exponent, with mandatory f suffix.",
+          "name": "constant.numeric.float.fasmg",
+          "match": "(?<![\\w.#])[0-9][0-9_']*[fF]\\b"
+        },
+        {
+          "comment": "Decimal with optional d/D suffix.",
+          "name": "constant.numeric.decimal.fasmg",
+          "match": "(?<![\\w.#])[0-9][0-9_']*[dD]?\\b"
+        }
+      ]
+    },
+    "label-definition": {
+      "match": "^\\s*([A-Za-z_.?#][\\w.?#]*)\\s*(::?)(?!=)",
+      "captures": {
+        "1": {
+          "name": "entity.name.label.fasmg"
+        },
+        "2": {
+          "name": "punctuation.separator.label.fasmg"
+        }
+      }
+    },
+    "preprocessor": {
+      "patterns": [
+        {
+          "name": "meta.preprocessor.include.fasmg",
+          "begin": "(?i)\\b(include)\\b(!)?",
+          "end": "$",
+          "beginCaptures": {
+            "1": {
+              "name": "keyword.control.import.fasmg"
+            },
+            "2": {
+              "name": "keyword.operator.unconditional.fasmg"
+            }
+          },
+          "patterns": [
+            {
+              "include": "#comment"
+            },
+            {
+              "include": "#strings"
+            },
+            {
+              "include": "#numbers"
+            },
+            {
+              "include": "#identifiers"
+            }
+          ]
+        }
+      ]
+    },
+    "macro-definition-head": {
+      "match": "(?i)^\\s*(macro|struc)\\b(!)?\\s*(?:\\(\\s*([A-Za-z_?][\\w.?#]*)\\s*\\)\\s*)?([A-Za-z_.?#][\\w.?#]*)?",
+      "captures": {
+        "1": {
+          "name": "storage.type.macro.fasmg"
+        },
+        "2": {
+          "name": "keyword.operator.unconditional.fasmg"
+        },
+        "3": {
+          "name": "variable.parameter.label.fasmg"
+        },
+        "4": {
+          "name": "entity.name.function.macro.fasmg"
+        }
+      }
+    },
+    "control-directives": {
+      "name": "keyword.control.fasmg",
+      "match": "(?i)(?<![\\w.#])(?:end\\s+namespace|end\\s+postpone|end\\s+iterate|end\\s+virtual|else\\s+match|end\\s+repeat|end\\s+match|end\\s+while|end\\s+macro|end\\s+struc|end\\s+irpv|else\\s+if|end\\s+irp|namespace|end\\s+if|rawmatch|postpone|continue|outscope|iterate|virtual|repeat|rmatch|assert|while|match|break|else|rept|irpv|end|irp|if)(?![\\w.#?])"
+    },
+    "data-directives": {
+      "name": "keyword.other.data.fasmg",
+      "match": "(?i)(?<![\\w.#])(?:ddqq|rdqq|emit|file|ddq|dqq|rdq|rqq|dbx|dup|db|dw|dd|dp|dq|dt|rb|rw|rd|rp|rq|rt)(?![\\w.#?])"
+    },
+    "storage-directives": {
+      "name": "storage.type.fasmg",
+      "match": "(?i)(?<![\\w.#])(?:redefine|element|restore|restruc|mvmacro|mvstruc|define|reequ|label|purge|local|equ|esc)(?![\\w.#?])"
+    },
+    "directives": {
+      "name": "keyword.other.directive.fasmg",
+      "match": "(?i)(?<![\\w.#])(?:retaincomments|removecomments|isolatelines|combinelines|restartout|executable|section|display|include|format|binary|store|load|eval|org|err)(?![\\w.#?])"
+    },
+    "operators-word": {
+      "name": "keyword.operator.word.fasmg",
+      "match": "(?i)(?<![\\w.#])(?:metadataof|elementsof|relativeto|elementof|lengthof|metadata|definite|bappend|element|scaleof|defined|string|sizeof|eqtype|bswap|scale|float|trunc|used|from|mod|xor|and|not|shl|shr|bsf|bsr|or|eq|at|as)(?![\\w.#?])"
+    },
+    "size-constants": {
+      "name": "support.constant.size.fasmg",
+      "match": "(?i)(?<![\\w.#])(?:dqqword|dqword|qqword|dword|fword|pword|qword|tbyte|tword|xword|yword|zword|byte|word)\\??(?![\\w.#])"
+    },
+    "special-symbols": {
+      "patterns": [
+        {
+          "name": "variable.language.address.fasmg",
+          "match": "\\$(?:\\$|@|%%|%)?"
+        },
+        {
+          "name": "variable.language.repeat-counter.fasmg",
+          "match": "(?<![\\w.#])%%?(?![\\w.#])"
+        },
+        {
+          "name": "support.constant.builtin.fasmg",
+          "match": "(?<![\\w.#])__(?:time|file|line|source)__(?![\\w.#])"
+        },
+        {
+          "name": "support.constant.builtin.fasmg",
+          "match": "(?<![\\w.#])%t(?![\\w.#])"
+        }
+      ]
+    },
+    "operators-punct": {
+      "patterns": [
+        {
+          "name": "keyword.operator.assignment.fasmg",
+          "match": ":=|=:|==|="
+        },
+        {
+          "name": "keyword.operator.comparison.fasmg",
+          "match": "<=|>=|<>|<|>"
+        },
+        {
+          "name": "keyword.operator.logical.fasmg",
+          "match": "[&|~]"
+        },
+        {
+          "name": "keyword.operator.arithmetic.fasmg",
+          "match": "[+\\-*/]"
+        },
+        {
+          "name": "keyword.operator.context.fasmg",
+          "match": "[`#]"
+        },
+        {
+          "name": "punctuation.separator.fasmg",
+          "match": "[,:]"
+        },
+        {
+          "name": "punctuation.section.parens.fasmg",
+          "match": "[()\\[\\]{}]"
+        },
+        {
+          "name": "keyword.operator.modifier.fasmg",
+          "match": "[!?]"
+        }
+      ]
+    },
+    "identifiers": {
+      "comment": "Maximal run of non-special non-whitespace chars; quotes are name chars mid-token (only string-starters at a token boundary). Verified against fasmg g.l4gs.",
+      "patterns": [
+        {
+          "match": "\\??(?:[.]+)?[^\\s+\\-/*=<>()\\[\\]{}:?!,.|&~`;\\\\][^\\s+\\-/*=<>()\\[\\]{}:?!,.|&~`;\\\\]*\\??(?:[.#]+[^\\s+\\-/*=<>()\\[\\]{}:?!,.|&~`;\\\\]+\\??)*",
+          "name": "variable.other.fasmg"
+        }
+      ]
+    },
+    "calminstruction-block": {
+      "comment": "DSL within the language: calminstruction ... end calminstruction.",
+      "begin": "(?i)^\\s*(calminstruction)\\b(!)?\\s*(?:\\(\\s*([A-Za-z_?][\\w.?#]*)\\s*\\)\\s*)?([A-Za-z_.?#][\\w.?#]*)?",
+      "end": "(?i)^\\s*(end\\s+calminstruction)\\b",
+      "beginCaptures": {
+        "1": {
+          "name": "storage.type.calminstruction.fasmg"
+        },
+        "2": {
+          "name": "keyword.operator.unconditional.fasmg"
+        },
+        "3": {
+          "name": "variable.parameter.label.fasmg"
+        },
+        "4": {
+          "name": "entity.name.function.calminstruction.fasmg"
+        }
+      },
+      "endCaptures": {
+        "1": {
+          "name": "storage.type.calminstruction.fasmg"
+        }
+      },
+      "name": "meta.calminstruction.fasmg",
+      "patterns": [
+        {
+          "include": "#comment"
+        },
+        {
+          "include": "#line-continuation"
+        },
+        {
+          "include": "#strings"
+        },
+        {
+          "include": "#calm-label"
+        },
+        {
+          "include": "#calm-commands"
+        },
+        {
+          "include": "#calm-match-modifiers"
+        },
+        {
+          "include": "#operators-word"
+        },
+        {
+          "include": "#size-constants"
+        },
+        {
+          "include": "#special-symbols"
+        },
+        {
+          "include": "#numbers"
+        },
+        {
+          "include": "#operators-punct"
+        },
+        {
+          "include": "#identifiers"
+        }
+      ]
+    },
+    "calm-label": {
+      "match": "^\\s*([A-Za-z_][\\w]*)\\s*(:)(?!=)",
+      "captures": {
+        "1": {
+          "name": "entity.name.label.calm.fasmg"
+        },
+        "2": {
+          "name": "punctuation.separator.label.fasmg"
+        }
+      }
+    },
+    "calm-commands": {
+      "name": "keyword.control.calm.fasmg",
+      "match": "(?i)(?<![\\w.#])(?:transform|stringify|assemble|rawmatch|taketext|arrange|compute|publish|display|match|check|local|store|take|call|jyes|jump|exit|emit|load|jno|err)(?![\\w.#?])"
+    },
+    "calm-match-modifiers": {
+      "name": "support.type.calm-modifier.fasmg",
+      "match": "(?i)(?<![\\w.#])(?:expression|priormacro|priorstruc|priorequ|number|quoted|macro|struc|name|area|equ)(?![\\w.#?])"
+    }
+  }
+}

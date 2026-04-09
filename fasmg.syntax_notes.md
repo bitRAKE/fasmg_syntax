@@ -1,6 +1,6 @@
 # fasmg Syntax Notes
 
-Source: `C:\git\~tgrysztar\fasmg\core\docs\{fasmg,manual}.txt`. These are the
+Source: `https://github.com/tgrysztar/fasmg/tree/master/core/docs\{fasmg,manual}.txt`. These are the
 rules that drove `fasmg.tmLanguage.json`.
 
 ## Lines & comments
@@ -162,7 +162,7 @@ happen not to look like number starts). Only leading *digits* and
 - **`#`** is the concatenation / context-break marker. It can appear
   anywhere inside an identifier (including leading or trailing) without
   changing the meaning; when placed between two name tokens it forces them
-  to concatenate (and resets the recognition context to the current one).
+  to concatenate (and apply the recognition context to the first one).
 - **Labels**: `name:` (ordinary label — allows another command on the same
   line), `name::` (area label, for use with `load`/`store`).
 

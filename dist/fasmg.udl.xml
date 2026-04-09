@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="utf-8"?>
+<NotepadPlus>
+    <UserLang name="fasmg" ext="asm inc fasmg g" udlVersion="2.1">
+        <Settings>
+            <Global caseIgnored="yes" allowFoldOfComments="no" foldCompact="no" forcePureLC="0" decimalSeparator="0"/>
+            <Prefix Keywords1="no" Keywords2="no" Keywords3="no" Keywords4="no" Keywords5="no" Keywords6="no" Keywords7="no" Keywords8="no"/>
+        </Settings>
+        <KeywordLists>
+            <Keywords name="Comments">00; 01 02((EOL))</Keywords>
+            <Keywords name="Numbers, prefix1">0x</Keywords>
+            <Keywords name="Numbers, prefix2">$</Keywords>
+            <Keywords name="Numbers, extras1">_ '</Keywords>
+            <Keywords name="Numbers, extras2"/>
+            <Keywords name="Numbers, suffix1">h H</Keywords>
+            <Keywords name="Numbers, suffix2">b B o O q Q d D f F</Keywords>
+            <Keywords name="Numbers, range">0 1 2 3 4 5 6 7 8 9 A B C D E F a b c d e f</Keywords>
+            <Keywords name="Operators1">+ - / * = &lt; &gt; ( ) [ ] { } : ? ! , . | &amp; ~ # ` \</Keywords>
+            <Keywords name="Operators2"/>
+            <Keywords name="Folders in code1, open">macro struc calminstruction namespace virtual postpone if while repeat rept iterate irp irpv match rawmatch rmatch</Keywords>
+            <Keywords name="Folders in code1, middle">else</Keywords>
+            <Keywords name="Folders in code1, close">end</Keywords>
+            <Keywords name="Folders in code2, open"/>
+            <Keywords name="Folders in code2, middle"/>
+            <Keywords name="Folders in code2, close"/>
+            <Keywords name="Folders in comment, open"/>
+            <Keywords name="Folders in comment, middle"/>
+            <Keywords name="Folders in comment, close"/>
+            <Keywords name="Keywords1">if else match end while repeat iterate irp irpv macro struc namespace virtual postpone rept rawmatch rmatch break continue assert outscope</Keywords>
+            <Keywords name="Keywords2">db dw dd dp dq dt ddq dqq ddqq rb rw rd rp rq rt rdq rqq rdqq emit dbx file dup</Keywords>
+            <Keywords name="Keywords3">equ reequ define redefine label element restore purge restruc mvmacro mvstruc esc local</Keywords>
+            <Keywords name="Keywords4">org section restartout load store format binary executable display err eval retaincomments removecomments isolatelines combinelines include</Keywords>
+            <Keywords name="Keywords5">mod xor and or not shl shr bsf bsr bswap string lengthof bappend element scale metadata elementof scaleof metadataof elementsof sizeof float trunc eq eqtype relativeto defined definite used at from as</Keywords>
+            <Keywords name="Keywords6">byte word dword fword pword qword tbyte tword dqword xword qqword yword dqqword zword</Keywords>
+            <Keywords name="Keywords7">assemble match rawmatch arrange compute check publish transform stringify take taketext call local jyes jno jump exit emit display err load store</Keywords>
+            <Keywords name="Keywords8">name expression number quoted equ macro struc priorequ priormacro priorstruc area</Keywords>
+            <Keywords name="Delimiters">00' 01 02' 03" 04 05"</Keywords>
+        </KeywordLists>
+        <Styles>
+            <WordsStyle name="DEFAULT" fgColor="000000" bgColor="FFFFFF" fontName="" fontStyle="0" nesting="0"/>
+            <WordsStyle name="COMMENTS" fgColor="008000" bgColor="FFFFFF" fontName="" fontStyle="2" nesting="0"/>
+            <WordsStyle name="LINE COMMENTS" fgColor="008000" bgColor="FFFFFF" fontName="" fontStyle="2" nesting="0"/>
+            <WordsStyle name="NUMBERS" fgColor="FF8000" bgColor="FFFFFF" fontName="" fontStyle="0" nesting="0"/>
+            <WordsStyle name="KEYWORDS1" fgColor="0000FF" bgColor="FFFFFF" fontName="" fontStyle="1" nesting="0"/>
+            <WordsStyle name="KEYWORDS2" fgColor="800080" bgColor="FFFFFF" fontName="" fontStyle="0" nesting="0"/>
+            <WordsStyle name="KEYWORDS3" fgColor="0080C0" bgColor="FFFFFF" fontName="" fontStyle="0" nesting="0"/>
+            <WordsStyle name="KEYWORDS4" fgColor="0080C0" bgColor="FFFFFF" fontName="" fontStyle="0" nesting="0"/>
+            <WordsStyle name="KEYWORDS5" fgColor="000080" bgColor="FFFFFF" fontName="" fontStyle="1" nesting="0"/>
+            <WordsStyle name="KEYWORDS6" fgColor="808000" bgColor="FFFFFF" fontName="" fontStyle="0" nesting="0"/>
+            <WordsStyle name="KEYWORDS7" fgColor="0000FF" bgColor="FFFFFF" fontName="" fontStyle="1" nesting="0"/>
+            <WordsStyle name="KEYWORDS8" fgColor="800040" bgColor="FFFFFF" fontName="" fontStyle="0" nesting="0"/>
+            <WordsStyle name="OPERATORS" fgColor="000000" bgColor="FFFFFF" fontName="" fontStyle="1" nesting="0"/>
+            <WordsStyle name="FOLDER IN CODE1" fgColor="000000" bgColor="FFFFFF" fontName="" fontStyle="1" nesting="0"/>
+            <WordsStyle name="FOLDER IN CODE2" fgColor="000000" bgColor="FFFFFF" fontName="" fontStyle="0" nesting="0"/>
+            <WordsStyle name="FOLDER IN COMMENT" fgColor="008000" bgColor="FFFFFF" fontName="" fontStyle="0" nesting="0"/>
+            <WordsStyle name="DELIMITERS1" fgColor="800000" bgColor="FFFFFF" fontName="" fontStyle="0" nesting="0"/>
+            <WordsStyle name="DELIMITERS2" fgColor="800000" bgColor="FFFFFF" fontName="" fontStyle="0" nesting="0"/>
+            <WordsStyle name="DELIMITERS3" fgColor="000000" bgColor="FFFFFF" fontName="" fontStyle="0" nesting="0"/>
+            <WordsStyle name="DELIMITERS4" fgColor="000000" bgColor="FFFFFF" fontName="" fontStyle="0" nesting="0"/>
+            <WordsStyle name="DELIMITERS5" fgColor="000000" bgColor="FFFFFF" fontName="" fontStyle="0" nesting="0"/>
+            <WordsStyle name="DELIMITERS6" fgColor="000000" bgColor="FFFFFF" fontName="" fontStyle="0" nesting="0"/>
+            <WordsStyle name="DELIMITERS7" fgColor="000000" bgColor="FFFFFF" fontName="" fontStyle="0" nesting="0"/>
+            <WordsStyle name="DELIMITERS8" fgColor="000000" bgColor="FFFFFF" fontName="" fontStyle="0" nesting="0"/>
+        </Styles>
+    </UserLang>
+</NotepadPlus>
