@@ -243,6 +243,241 @@ instruction written in a different, compiled sub-language. Inside the block:
 - Custom CALM commands may be defined as macros or calminstructions in the
   `calminstruction?.…?` namespace (e.g. `calminstruction?.init?`).
 
+---
+
+# Part 2 — Deeper Layers: Disambiguation and Semantics
+
+The rules above (Part 1) are sufficient for **surface-level** syntax highlighting —
+tokenising, colouring keywords, matching block pairs. But tools that go deeper
+(Tree-sitter grammars, LSP servers, linters) must also understand the structural
+and semantic layers below. This section documents those layers, verified against
+fasmg `g.l4gs`.
+
+## Symbol classes and line-position disambiguation
+
+Every name in fasmg can simultaneously hold meanings in up to **three** independent
+symbol classes:
+
+| Class | How defined | How invoked (line position) |
+|---|---|---|
+| **Expression** | `= := =: equ reequ define redefine` | Anywhere except the positions below |
+| **Instruction** | `macro … end macro`, `calminstruction … end calminstruction` | First non-label identifier on a line |
+| **Labeled-instruction** | `struc … end struc`, `calminstruction (target) …` | Second position: `label Name …` |
+
+The same name `bar` can be all three simultaneously:
+
+```fasmg
+define bar 42           ; expression class
+macro bar               ; instruction class
+  db 0AAh
+end macro
+struc bar               ; labeled-instruction class
+  label .:byte
+  .x db ?
+end struc
+
+dd bar                  ; expression: 42
+bar                     ; instruction: macro (emits 0xAA)
+myobj bar               ; labeled-instruction: struc
+```
+
+### Label chaining on a single line
+
+Multiple labels can precede an instruction on the same line:
+
+```fasmg
+a: b: c: db 0FFh        ; three labels, all pointing to the same address
+```
+
+A label followed by a labeled-instruction also works:
+
+```fasmg
+first: second emit_one   ; first = label, second = labeled-instruction target
+```
+
+### Per-class removal
+
+| Directive | Removes from class | Syntax |
+|---|---|---|
+| `restore name` | Expression | Prefix directive |
+| `purge name` | Instruction | Prefix directive |
+| `restruc name` | Labeled-instruction | Prefix directive |
+
+Each removes only the **top** meaning in that class, revealing the one beneath.
+
+## Symbol stacking (define/restore/purge)
+
+Definitions in fasmg are **stacked**, not overwritten. Each `define`/`equ`/`macro`/
+`struc` pushes a new meaning onto the name's stack for its class. `restore`/`purge`/
+`restruc` peel the top meaning, revealing the prior one.
+
+```fasmg
+define myval 1
+define myval 2
+define myval 3
+dd myval              ; 3  (top of stack)
+restore myval         ; peel
+dd myval              ; 2
+restore myval         ; peel
+dd myval              ; 1
+```
+
+### reequ / redefine — replace-top (no stack push)
+
+`reequ` (infix) and `redefine` (prefix) replace the current top-of-stack without
+pushing a new entry:
+
+```fasmg
+myval equ 1
+myval equ 2
+myval reequ 99        ; replaces 2 with 99 (stack depth unchanged)
+dd myval              ; 99
+restore myval
+dd myval              ; 1  (only one restore needed)
+```
+
+### Shadowing keywords and built-ins
+
+**Any** name can be shadowed — including keywords (`db`, `if`, `while`) and built-in
+symbols (`$`, `%`, `byte`). After shadowing, the name resolves to the user definition.
+After `restore`/`purge`, the built-in meaning returns as a fallback:
+
+```fasmg
+define db 42          ; shadow the 'db' data directive
+dd db                 ; expression: 42 (not a directive)
+restore db
+db 0                  ; directive again
+
+define $ 99           ; shadow current-address built-in
+dd $                  ; 99
+restore $             ; $ is current-address again
+```
+
+### mvmacro / mvstruc — rename across classes
+
+`mvmacro newname, oldname` moves the instruction-class meaning. `mvstruc` does the
+same for labeled-instruction class. The old name loses its meaning in that class.
+
+## Assignment syntax: prefix vs infix
+
+Fasmg has two syntactic families for symbol definition:
+
+| Form | Syntax | Example |
+|---|---|---|
+| **Infix** | `name OP value` | `x = 1`, `x := 2`, `x =: $`, `x equ 3`, `x reequ 4` |
+| **Prefix** | `KEYWORD name value` | `define x 5`, `redefine x 6`, `label x:byte at $`, `element x` |
+
+This distinction matters for parsers: infix forms look like `identifier operator expression`,
+while prefix forms look like `keyword identifier expression`. A Tree-sitter grammar must
+handle both without confusing one for the other.
+
+## Angle-bracket groups
+
+Angle brackets `< >` serve as **argument group delimiters** in several contexts:
+
+- **Macro arguments**: `gatherer <1,2,3>, <4,5,6>` — commas inside `< >` don't split arguments.
+- **`define` values**: `define PARAMS <1,2,3>` — the value includes commas.
+- **`match` source**: `match =A,=B, PARAMS` — where `PARAMS` expands to `<1,2,3>`.
+- **`iterate` variable groups**: `iterate <a,b>, 1,10, 2,20` — paired iteration variables.
+- **CALM `match` bracket pair**: `match from-to, def, ()` — third argument selects brackets.
+
+Angle brackets are **not operators** — they are structural grouping tokens that only
+have meaning at the argument-parsing level. A grammar should treat them as opaque
+delimiters, not as comparison operators in this context.
+
+## CALM `match` — sigils, bracket pairs, and wildcard modifiers
+
+CALM `match` has up to 4 arguments: `match pattern, source [, bracket-or-sigil [, …]]`.
+
+### Bracket pair (3rd argument is two chars)
+
+When the 3rd argument is a bracket pair like `()`, `[]`, `<>`, `{}`, it enables
+**balanced matching** — wildcards in the pattern can match text containing those brackets
+as long as they are balanced:
+
+```fasmg
+calminstruction range definition
+    match   from-to, definition, ()
+    emit    1, from
+    emit    1, to
+end calminstruction
+range (10-3)-10       ; from = (10-3), to = 10  (balanced parens)
+```
+
+### Sigil character (3rd argument is one char)
+
+When the 3rd argument is a single special character (`:`, `/`, `-`, `.`, etc.), it
+becomes the **wildcard modifier sigil**. A wildcard followed by `sigil + modifier`
+restricts what it matches:
+
+| Modifier | Matches |
+|---|---|
+| `name` | A complete symbol identifier |
+| `expression` | A well-structured expression (may be unevaluated) |
+| `number` | A numeric literal (integer or float) |
+| `quoted` | A quoted string |
+| `equ` | An identifier with a defined expression-class meaning |
+| `macro` | An identifier with a defined instruction-class meaning |
+| `struc` | An identifier with a defined labeled-instruction-class meaning |
+| `priorequ` | Like `equ` but must be defined earlier (no forward refs) |
+| `priormacro` | Like `macro` but earlier |
+| `priorstruc` | Like `struc` but earlier |
+| `area` | An area label identifier |
+
+Example with `:` as sigil:
+
+```fasmg
+match   var:name val, var, :    ; :name restricts 'var' to match a symbol name only
+```
+
+Example with `/` as sigil:
+
+```fasmg
+match   text/expression, text, /   ; /expression restricts 'text' to a valid expression
+```
+
+**Constraint**: Bracket balancing and wildcard modifying cannot be combined in the same
+`match` command. Also, specialized wildcards cannot be made optional.
+
+## The `outscope` directive
+
+`outscope` evaluates its argument line in the **parent scope** (one macro expansion
+level up). This is how macros can define globally-visible symbols:
+
+```fasmg
+macro defglobal name*, val*
+  outscope name equ val
+end macro
+defglobal myglob, 42
+dd myglob             ; 42
+```
+
+## Implications for parser/grammar design
+
+### What a syntax grammar CAN resolve
+- Tokenisation: numbers, strings, identifiers, operators, comments
+- Block structure: keyword-pair delimited blocks (`if`…`end if`, etc.)
+- CALM as a structurally distinct region
+- Label definitions (`:` and `::`)
+- Assignment form (infix vs prefix)
+- Angle-bracket group boundaries
+
+### What a syntax grammar CANNOT resolve (semantic layer required)
+- Which symbol class a name resolves in at a given position (requires tracking
+  all `define`/`macro`/`struc` and `restore`/`purge`/`restruc` across passes)
+- Whether a name is shadowed or built-in at a given point
+- Whether an identifier is an instruction, expression, or labeled-instruction target
+  (depends on all prior definitions, potentially across `include` files)
+- Forward reference resolution (fasmg is multi-pass)
+- `retaincomments` / `isolatelines` mode changes (alter tokenisation at runtime)
+
+> **The Tree-sitter grammar models fasmg syntax and structure, not final symbol
+> meaning.** Because names in fasmg may be shadowed, stacked, restored, purged,
+> or rebound across symbol classes, downstream tooling should treat semantic
+> resolution as a separate analysis layer built on top of the parse tree.
+
+---
+
 ## Grammar implications
 - **Line-based strings**: string rules use `'…'(?!')|$` and `"…"(?!")|$` and
   accept only doubled-quote escapes.

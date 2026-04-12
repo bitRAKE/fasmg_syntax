@@ -36,7 +36,7 @@ def main() -> int:
     # -- Lint (optional) --------------------------------------------------
     if args.lint:
         from lint_grammar import lint
-        ok = lint(ROOT / "fasmg.tmLanguage.json")
+        ok = lint(DIST / "fasmg.tmLanguage.json")
         if not ok:
             return 1
 

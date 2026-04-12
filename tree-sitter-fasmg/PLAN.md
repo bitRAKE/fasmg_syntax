@@ -353,9 +353,117 @@ tokenisation at runtime, but Tree-sitter is a stateless parser.
 overwhelming default and the expectation of every fasmg source file in
 practice.
 
+### 5.6 Symbol stacking is a semantic concern, not a grammar concern
+
+**Decision**: the grammar does **not** attempt to track `define`/`restore`/
+`purge`/`restruc` state. Every name gets tagged by its syntactic position
+(first on line → potential instruction; after label → potential labeled-
+instruction; elsewhere → expression). Whether the name actually has a
+meaning in that class is a downstream semantic question.
+
+Verified implications (all against fasmg `g.l4gs`):
+- `define db 42; dd db` — `db` resolves as expression (user shadow), not directive.
+- `purge` removes instruction class only; `restruc` removes labeled-instruction
+  class only; `restore` removes expression class only.
+- `reequ`/`redefine` replace the top of stack without pushing.
+- `mvmacro`/`mvstruc` rename across instruction/labeled-instruction class.
+- Keywords, built-ins, and size constants can all be shadowed and later restored.
+
+The grammar should tag `restore`, `purge`, `restruc` as distinct statement
+types (they have unique argument semantics) but need not model the stack.
+
+### 5.7 Assignment syntax has two distinct forms
+
+**Decision**: the grammar must distinguish prefix and infix assignment:
+
+| Form | Syntax | Grammar rule |
+|---|---|---|
+| **Infix** | `name OP value` | `assignment_statement` with `name`, `operator`, `value` fields |
+| **Prefix** | `KEYWORD name value` | `directive_statement` with `keyword`, `arguments` fields |
+
+Infix: `=`, `:=`, `=:`, `equ`, `reequ`
+Prefix: `define`, `redefine`, `label`, `element`
+
+The contributed grammar.js already handles this split correctly.
+
+### 5.8 Angle-bracket groups are structural delimiters, not operators
+
+**Decision**: `<` and `>` in argument position are **group delimiters**
+(like parentheses), not comparison operators. The contributed grammar
+handles this via `angled_argument` nodes with opaque `angled_text_fragment`
+content — this is the right approach for now. A future refinement could
+parse the interior, but the risk of ambiguity with comparison `<`/`>` in
+expressions makes opaque treatment safer.
+
+### 5.9 CALM `match` sigils and bracket pairs need dedicated node types
+
+**Decision**: CALM `match` has up to 4 arguments with complex semantics:
+1. Pattern (with wildcards, literal separators, and sigil+modifier annotations)
+2. Source identifier
+3. Optional bracket pair (`()`, `[]`, `<>`, `{}`) OR sigil character (`:`, `/`, `-`, `.`, etc.)
+4. Optional further arguments
+
+The grammar should expose:
+- `calm_match_pattern` — the first argument
+- `calm_match_source` — the second argument (always an identifier)
+- `calm_match_option` — the third argument (bracket pair or sigil)
+
+Wildcard modifiers (`name`, `expression`, `number`, `quoted`, etc.) appear
+as `sigil + modifier_name` within the pattern. These can be tagged as
+`calm_wildcard_modifier` nodes, but only when a sigil is present (the 3rd
+argument determines which character is the sigil).
+
+### 5.10 Leading-comma calls and `outscope` are structural patterns
+
+`_, "file", ico` — leading comma means the first argument is empty.
+The grammar handles this via `comma_prefixed_argument_list` (contributed).
+
+`outscope` wraps an entire statement line and evaluates it one scope up.
+It should be a distinct node type: `outscope_statement` containing a
+child `_simple_statement`.
+
 ---
 
-## 6. Testing Strategy
+## 6. Semantic Layer Guidance (for downstream consumers)
+
+This section documents what a **semantic analysis layer** (LSP, linter, etc.)
+built on top of the parse tree would need to handle. The Tree-sitter grammar
+intentionally does not attempt any of this.
+
+### 6.1 Three-class symbol resolution
+
+Every identifier has potentially three meanings (expression, instruction,
+labeled-instruction). Resolution depends on:
+1. All prior `define`/`equ`/`macro`/`struc`/`calminstruction` definitions
+2. All prior `restore`/`purge`/`restruc` removals
+3. All prior `mvmacro`/`mvstruc` renames
+4. All prior `reequ`/`redefine` replacements
+5. Forward references (fasmg is multi-pass — a name can be used before definition)
+
+### 6.2 Stacked meanings and fallback
+
+Each class has an independent stack per name. Built-in meanings (`$`, `byte`, etc.)
+are the bottom of the stack and return as fallback after all user definitions are
+removed. `restore`/`purge`/`restruc` each peel one layer from their respective class.
+
+### 6.3 Scope boundaries
+
+- `macro`/`struc`/`calminstruction` bodies create new scopes.
+- `local` creates scope-local names.
+- `outscope` escapes one level.
+- `namespace` creates named scope containers.
+- `postpone` defers execution to after the current scope ends.
+
+### 6.4 Multi-pass resolution
+
+fasmg resolves forward references by running multiple passes. A name might be
+undefined on pass 1 but defined on pass 2. Semantic tools should either:
+- Run a simplified multi-pass resolver, or
+- Accept that some references will appear "undefined" and suppress false errors.
+
+---
+
+## 7. Testing Strategy (updated)
 
 - **Port existing test suite**: convert `../test_suit/pass/*.g` and
   `../test_suit/fail/*.g` into Tree-sitter corpus format (input +
@@ -365,13 +473,25 @@ practice.
   `fasmg.syntax_notes.md`.
 - **Identifier edge cases**: mid-token quotes, `$` forms, `?` prefix/
   suffix, dotted numeric segments, Unicode, `#` concatenation.
+- **Symbol stacking**: define/restore/purge sequences, keyword shadowing,
+  reequ/redefine replace-top, triple-class coexistence.
+- **Assignment forms**: infix (`=`, `:=`, `=:`, `equ`, `reequ`) vs prefix
+  (`define`, `redefine`, `label`, `element`).
+- **Line position**: label chaining (`a: b: c: db 0`), label + labeled-
+  instruction on same line, `outscope` wrapping.
+- **Angle-bracket groups**: macro arguments, iterate variable groups, define
+  values, match sources.
+- **CALM match**: sigil characters, bracket pairs, wildcard modifiers
+  (`name`, `expression`, `number`, `quoted`, `equ`, `macro`, `struc`, etc.).
+- **Real script forms**: adapted from VSF Example 10 downstream usage —
+  `calminstruction (target)`, `else match` chains, leading-comma calls.
 - **Error recovery**: unclosed blocks, unclosed strings, invalid numbers
   should produce `ERROR` nodes without cascading.
 - **Regression**: CI runs `tree-sitter test` alongside `validate.py`.
 
 ---
 
-## 7. Dependencies
+## 8. Dependencies
 
 - Tree-sitter CLI (`tree-sitter` ≥ 0.24)
 - Node.js (for `tree-sitter generate`)
@@ -380,7 +500,7 @@ practice.
 
 ---
 
-## 8. References
+## 9. References
 
 - fasmg documentation: `C:\git\~tgrysztar\fasmg\core\docs\{fasmg,manual}.txt`
 - Syntax notes: `../fasmg.syntax_notes.md`
@@ -388,3 +508,6 @@ practice.
 - TextMate grammar (reference output): `../fasmg.tmLanguage.json`
 - Tree-sitter docs: https://tree-sitter.github.io/tree-sitter/
 - Tree-sitter external scanners: https://tree-sitter.github.io/tree-sitter/creating-parsers/4-external-scanners.html
+- Upstream assist notes (VSF team): `C:\Z_gpt\vsf\docs\fasmg_syntax_upstream_assist.md`
+- Contributed grammar.js and starter queries: this directory
+- Test suite (binary-validated): `../test_suit/{pass,fail}/*.g`
